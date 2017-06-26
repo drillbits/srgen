@@ -22,10 +22,9 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"sort"
 	"strings"
 	"text/template"
-
-	"sort"
 
 	"golang.org/x/tools/imports"
 )
@@ -73,7 +72,7 @@ func Services() *ServiceRegistry {
 }
 `
 
-func Generate(files []string) error {
+func Generate(files []string, outfile string) error {
 	var pkg string
 	var services []string
 	for _, file := range files {
@@ -114,8 +113,9 @@ func Generate(files []string) error {
 	}
 	sort.Strings(services)
 
-	// TODO: option
-	outfile := "services_gen.go"
+	if outfile == "" {
+		outfile = "services.go"
+	}
 
 	var buf bytes.Buffer
 	w := bufio.NewWriter(&buf)

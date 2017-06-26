@@ -15,22 +15,46 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"io"
 	"log"
 	"os"
 
 	"github.com/drillbits/srgen"
 )
 
+var (
+	output = flag.String("o", "services.go", "write the generated output to the named file, instead of the default name")
+)
+
+func usage(w io.Writer) func() {
+	return func() {
+		fmt.Fprint(w, `usage: srgen gofiles...
+
+Generate the service registry by tagged interfaces.
+
+  -o file
+    write the generated output to the named file,
+    instead of the default name 'services.go'.
+
+`)
+		os.Exit(2)
+	}
+}
+
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("srgen: ")
+	flag.Usage = usage(os.Stderr)
+	flag.Parse()
 
-	args := os.Args[1:]
+	args := flag.Args()
 	if len(args) < 1 {
-		log.Fatal("too few argument(s)\nusage: srgen gofiles...")
+		flag.Usage()
 	}
 
-	err := srgen.Generate(args)
+	err := srgen.Generate(args, *output)
 	if err != nil {
 		log.Fatalf("failed to generate: %s", err)
 	}
