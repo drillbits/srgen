@@ -67,6 +67,17 @@ func (reg *ServiceRegistry) Validate() error {
 	return nil
 }
 
+// InitServiceRegistry initializes the ServiceRegistry.
+func InitServiceRegistry(
+{{- range .Services}}
+	{{.}} {{.}},
+{{- end}}
+) {
+{{- range .Services}}
+	reg.{{.}} = {{.}}
+{{- end}}
+}
+
 // Services returns the ServiceRegistry.
 func Services() *ServiceRegistry {
 	if err := reg.Validate(); err != nil {
