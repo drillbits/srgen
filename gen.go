@@ -25,6 +25,8 @@ import (
 	"strings"
 	"text/template"
 
+	"sort"
+
 	"golang.org/x/tools/imports"
 )
 
@@ -110,6 +112,7 @@ func Generate(files []string) error {
 			return true
 		})
 	}
+	sort.Strings(services)
 
 	// TODO: option
 	outfile := "services_gen.go"
