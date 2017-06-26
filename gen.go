@@ -32,13 +32,41 @@ var servicesTmpl = `package {{.Package}}
 
 var reg = &ServiceRegistry{}
 
+// ServiceRegistry is an registry for services.
 type ServiceRegistry struct {
+	valid bool
+
 {{- range .Services}}
 	{{.}} {{.}}
 {{- end}}
 }
 
+// Validate reports whether all services are fulfilled.
+func (reg *ServiceRegistry) Validate() error {
+	if reg.valid {
+		return nil
+	}
+
+	var errs []string
+
+{{- range .Services}}
+	if reg.{{.}} == nil {
+		errs = append(errs, "{{.}}")
+	}
+{{- end}}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("nil service(s): %s", strings.Join(errs, ", "))
+	}
+
+	return nil
+}
+
+// Services returns the ServiceRegistry.
 func Services() *ServiceRegistry {
+	if err := reg.Validate(); err != nil {
+		panic(err)
+	}
 	return reg
 }
 `
