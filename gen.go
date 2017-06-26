@@ -19,17 +19,21 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"os"
 	"sort"
 	"strings"
 	"text/template"
-
-	"golang.org/x/tools/imports"
 )
 
 var servicesTmpl = `package {{.Package}}
+
+import (
+	"fmt"
+	"strings"
+)
 
 var reg = &ServiceRegistry{}
 
@@ -129,7 +133,7 @@ func Generate(files []string, outfile string) error {
 	})
 	w.Flush()
 
-	b, err := imports.Process(outfile, buf.Bytes(), nil)
+	b, err := format.Source(buf.Bytes())
 	if err != nil {
 		return err
 	}
