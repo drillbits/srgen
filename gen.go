@@ -80,6 +80,11 @@ func InitServiceRegistry(
 
 // Services returns the ServiceRegistry.
 func Services() *ServiceRegistry {
+	return reg
+}
+
+// MustServices is like Services but panics if all services are not fulfilled.
+func MustServices() *ServiceRegistry {
 	if err := reg.Validate(); err != nil {
 		panic(err)
 	}
