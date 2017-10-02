@@ -42,7 +42,7 @@ type ServiceRegistry struct {
 	valid bool
 
 {{- range .Services}}
-	{{.}} {{.}}
+	{{.Name}} {{.Name}}
 {{- end}}
 }
 
@@ -55,8 +55,8 @@ func (reg *ServiceRegistry) Validate() error {
 	var errs []string
 
 {{- range .Services}}
-	if reg.{{.}} == nil {
-		errs = append(errs, "{{.}}")
+	if reg.{{.Name}} == nil {
+		errs = append(errs, "{{.Name}}")
 	}
 {{- end}}
 
@@ -70,11 +70,11 @@ func (reg *ServiceRegistry) Validate() error {
 // InitServiceRegistry initializes the ServiceRegistry.
 func InitServiceRegistry(
 {{- range .Services}}
-	{{.}} {{.}},
+	{{.Name}} {{.Name}},
 {{- end}}
 ) {
 {{- range .Services}}
-	reg.{{.}} = {{.}}
+	reg.{{.Name}} = {{.Name}}
 {{- end}}
 }
 
@@ -90,11 +90,34 @@ func MustServices() *ServiceRegistry {
 	}
 	return reg
 }
+
+{{- range .Services}}
+// {{.Name}}Mock implements {{.Name}} for mocking.
+type {{.Name}}Mock struct {
+	{{- range $_, $m := .Methods}}
+	{{- range $i, $v := .Results}}
+	{{$m.Name}}Ret{{$i}} {{$v}}
+	{{- end}}
+	{{- end}}
+}
+
+{{end}}
 `
+
+type Service struct {
+	Name    string
+	Methods []*ServiceMethod
+}
+
+type ServiceMethod struct {
+	Name    string
+	Params  []string
+	Results []string
+}
 
 func Generate(files []string, outfile string) error {
 	var pkg string
-	var services []string
+	var services []*Service
 	for _, file := range files {
 		fset := token.NewFileSet()
 		f, err := parser.ParseFile(fset, file, nil, parser.ParseComments)
@@ -109,29 +132,63 @@ func Generate(files []string, outfile string) error {
 		}
 
 		ast.Inspect(f, func(node ast.Node) bool {
+			// type or not
 			d, ok := node.(*ast.GenDecl)
 			if !ok || d.Tok != token.TYPE {
 				return true
 			}
-
+			// tag
 			if !findTag(d, "+srgen") {
 				return true
 			}
 
 			for _, spec := range d.Specs {
-				t := spec.(*ast.TypeSpec)
-				_, ok := t.Type.(*ast.InterfaceType)
-				if !ok {
+				if !isInterface(spec) {
 					continue
 				}
-				services = append(services, t.Name.Name)
-				return false
+				t := spec.(*ast.TypeSpec)
+				svc := &Service{Name: t.Name.Name}
+
+				i := t.Type.(*ast.InterfaceType)
+				for _, f := range i.Methods.List {
+					var fnName string
+					for _, n := range f.Names {
+						fnName = n.Name
+					}
+					if fnName == "" {
+						continue
+					}
+					m := &ServiceMethod{Name: fnName}
+					svc.Methods = append(svc.Methods, m)
+
+					fn, ok := f.Type.(*ast.FuncType)
+					if !ok {
+						continue
+					}
+
+					for _, f := range fn.Params.List {
+						s := fieldString(f.Type)
+						if s != "" {
+							m.Params = append(m.Params, s)
+						}
+					}
+
+					for _, f := range fn.Results.List {
+						s := fieldString(f.Type)
+						if s != "" {
+							m.Results = append(m.Results, s)
+						}
+					}
+				}
+				services = append(services, svc)
 			}
 
 			return true
 		})
 	}
-	sort.Strings(services)
+	sort.SliceStable(services, func(i, j int) bool {
+		return services[i].Name < services[j].Name
+	})
 
 	if outfile == "" {
 		outfile = "services.go"
@@ -142,7 +199,7 @@ func Generate(files []string, outfile string) error {
 	t := template.Must(template.New("services").Parse(servicesTmpl))
 	t.Execute(w, struct {
 		Package  string
-		Services []string
+		Services []*Service
 	}{
 		Package:  pkg,
 		Services: services,
@@ -178,4 +235,38 @@ func findTag(d *ast.GenDecl, tag string) bool {
 		}
 	}
 	return false
+}
+
+func isInterface(spec ast.Spec) bool {
+	t, ok := spec.(*ast.TypeSpec)
+	if !ok {
+		return false
+	}
+	if _, ok := t.Type.(*ast.InterfaceType); !ok {
+		return false
+	}
+	return true
+}
+
+func fieldString(expr ast.Expr) string {
+	switch v := expr.(type) {
+	case *ast.ArrayType:
+		s := fieldString(v.Elt)
+		if s != "" {
+			return "[]" + s
+		}
+	case *ast.StarExpr:
+		s := fieldString(v.X)
+		if s != "" {
+			return "*" + s
+		}
+	case *ast.Ident:
+		return v.Name
+	case *ast.SelectorExpr:
+		if x, ok := v.X.(*ast.Ident); ok {
+			// TODO: import unknown selector
+			return fmt.Sprintf("%s.%s", x.Name, v.Sel.Name)
+		}
+	}
+	return ""
 }

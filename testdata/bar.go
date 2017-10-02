@@ -14,8 +14,19 @@
 
 package testdata
 
+import "context"
+
+type Z struct{}
+type Bar struct{}
+
 // +srgen
-type ZService interface{}
+type ZService interface {
+	Get(context.Context) (*Z, error)
+	List(context.Context) ([]*Z, error)
+}
 
 //+srgen
-type BarService interface{}
+type BarService interface {
+	Get(context.Context) (*Bar, error)
+	List(context.Context) ([]*Bar, error)
+}
