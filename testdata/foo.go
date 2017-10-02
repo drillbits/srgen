@@ -14,8 +14,15 @@
 
 package testdata
 
+import (
+	"context"
+	"net/http"
+)
+
 // +srgen
-type FooService interface{}
+type FooService interface {
+	Get(ctx context.Context) (string, []string, *http.Request, error)
+}
 
 // +srgen
 type FooConcreteService struct{}
