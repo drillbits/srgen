@@ -42,7 +42,7 @@ type ServiceRegistry struct {
 	valid bool
 
 {{- range .Services}}
-	{{.}} {{.}}
+	{{.Name}} {{.Name}}
 {{- end}}
 }
 
@@ -55,8 +55,8 @@ func (reg *ServiceRegistry) Validate() error {
 	var errs []string
 
 {{- range .Services}}
-	if reg.{{.}} == nil {
-		errs = append(errs, "{{.}}")
+	if reg.{{.Name}} == nil {
+		errs = append(errs, "{{.Name}}")
 	}
 {{- end}}
 
@@ -70,11 +70,11 @@ func (reg *ServiceRegistry) Validate() error {
 // InitServiceRegistry initializes the ServiceRegistry.
 func InitServiceRegistry(
 {{- range .Services}}
-	{{.}} {{.}},
+	{{.Name}} {{.Name}},
 {{- end}}
 ) {
 {{- range .Services}}
-	reg.{{.}} = {{.}}
+	reg.{{.Name}} = {{.Name}}
 {{- end}}
 }
 
@@ -92,9 +92,13 @@ func MustServices() *ServiceRegistry {
 }
 `
 
+type Service struct {
+	Name string
+}
+
 func Generate(files []string, outfile string) error {
 	var pkg string
-	var services []string
+	var services []*Service
 	for _, file := range files {
 		fset := token.NewFileSet()
 		f, err := parser.ParseFile(fset, file, nil, parser.ParseComments)
@@ -124,14 +128,17 @@ func Generate(files []string, outfile string) error {
 				if !ok {
 					continue
 				}
-				services = append(services, t.Name.Name)
+				svc := &Service{Name: t.Name.Name}
+				services = append(services, svc)
 				return false
 			}
 
 			return true
 		})
 	}
-	sort.Strings(services)
+	sort.SliceStable(services, func(i, j int) bool {
+		return services[i].Name < services[j].Name
+	})
 
 	if outfile == "" {
 		outfile = "services.go"
@@ -142,7 +149,7 @@ func Generate(files []string, outfile string) error {
 	t := template.Must(template.New("services").Parse(servicesTmpl))
 	t.Execute(w, struct {
 		Package  string
-		Services []string
+		Services []*Service
 	}{
 		Package:  pkg,
 		Services: services,
