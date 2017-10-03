@@ -20,12 +20,13 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/drillbits/srgen"
 )
 
 var (
-	output = flag.String("o", "services.go", "write the generated output to the named file, instead of the default name")
+	output = flag.String("o", "", "write the generated output to the named file, instead of the default name")
 )
 
 func usage(w io.Writer) func() {
@@ -52,6 +53,10 @@ func main() {
 	args := flag.Args()
 	if len(args) < 1 {
 		flag.Usage()
+	}
+
+	if *output == "" {
+		*output = filepath.Join(filepath.Dir(args[0]), "services.go")
 	}
 
 	err := srgen.Generate(args, *output)
