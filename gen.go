@@ -105,6 +105,7 @@ type {{$s.Name}}Mock struct {
 }
 
 {{- range $_, $m := $s.Methods}}
+// {{$m.Name}} implements for mocking.
 func (s *{{$s.Name}}Mock) {{$m.Name}}(
 	{{- range $i, $p := $m.Params}}{{if $i}}, {{end}}{{$p}}{{end -}}
 ) (
