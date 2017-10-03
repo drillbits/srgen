@@ -91,15 +91,28 @@ func MustServices() *ServiceRegistry {
 	return reg
 }
 
-{{- range .Services}}
-// {{.Name}}Mock implements {{.Name}} for mocking.
-type {{.Name}}Mock struct {
-	{{- range $_, $m := .Methods}}
-	{{- range $i, $v := .Results}}
-	{{$m.Name}}Ret{{$i}} {{$v}}
+{{- range $_, $s := .Services}}
+// {{$s.Name}}Mock implements {{$s.Name}} for mocking.
+type {{$s.Name}}Mock struct {
+	{{- range $_, $m := $s.Methods}}
+	{{- range $i, $r := $m.Results}}
+	{{$m.Name}}Ret{{$i}} {{$r}}
 	{{- end}}
 	{{- end}}
 }
+
+{{- range $_, $m := $s.Methods}}
+func (s *{{$s.Name}}Mock) {{$m.Name}}(
+	{{- range $i, $p := $m.Params}}{{if $i}}, {{end}}{{$p}}{{end -}}
+) (
+	{{- range $i, $r := $m.Results}}{{if $i}}, {{end}}{{$r}}{{end -}}
+) {
+	return {{range $i, $r := $m.Results -}}
+	{{- if $i}}, {{end -}}
+	s.{{$m.Name}}Ret{{$i}}
+	{{- end}}
+}
+{{- end}}
 
 {{end}}
 `
