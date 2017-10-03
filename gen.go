@@ -34,7 +34,7 @@ import (
 	"fmt"
 	"strings"
 	{{- range .Imports}}
-	{{.Name}} {{.Value}}
+	{{if .Using}}{{.Name}} {{.Value}}{{end}}
 	{{- end}}
 )
 
@@ -123,6 +123,7 @@ func (s *{{$s.Name}}Mock) {{$m.Name}}(
 type Import struct {
 	Name  string
 	Value string
+	Using bool
 }
 
 func (i *Import) DefaultName() string {
@@ -211,14 +212,14 @@ func Generate(files []string, outfile string) error {
 					}
 
 					for _, f := range fn.Params.List {
-						s := fieldString(f.Type)
+						s := fieldString(imports, f.Type)
 						if s != "" {
 							m.Params = append(m.Params, s)
 						}
 					}
 
 					for _, f := range fn.Results.List {
-						s := fieldString(f.Type)
+						s := fieldString(imports, f.Type)
 						if s != "" {
 							m.Results = append(m.Results, s)
 						}
@@ -277,6 +278,14 @@ func imp(spec *ast.ImportSpec) *Import {
 	}
 }
 
+func usingImp(imports []*Import, name string) {
+	for _, i := range imports {
+		if i.DefaultName() == name {
+			i.Using = true
+		}
+	}
+}
+
 func findTag(d *ast.GenDecl, tag string) bool {
 	if d.Doc == nil {
 		return false
@@ -301,15 +310,15 @@ func isInterface(spec ast.Spec) bool {
 	return true
 }
 
-func fieldString(expr ast.Expr) string {
+func fieldString(imports []*Import, expr ast.Expr) string {
 	switch v := expr.(type) {
 	case *ast.ArrayType:
-		s := fieldString(v.Elt)
+		s := fieldString(imports, v.Elt)
 		if s != "" {
 			return "[]" + s
 		}
 	case *ast.StarExpr:
-		s := fieldString(v.X)
+		s := fieldString(imports, v.X)
 		if s != "" {
 			return "*" + s
 		}
@@ -317,7 +326,7 @@ func fieldString(expr ast.Expr) string {
 		return v.Name
 	case *ast.SelectorExpr:
 		if x, ok := v.X.(*ast.Ident); ok {
-			// TODO: import unknown selector
+			usingImp(imports, x.Name)
 			return fmt.Sprintf("%s.%s", x.Name, v.Sel.Name)
 		}
 	}
