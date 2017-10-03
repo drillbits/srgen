@@ -33,6 +33,9 @@ var servicesTmpl = `package {{.Package}}
 import (
 	"fmt"
 	"strings"
+	{{- range .Imports}}
+	{{.Name}} {{.Value}}
+	{{- end}}
 )
 
 var reg = &ServiceRegistry{}
@@ -117,6 +120,17 @@ func (s *{{$s.Name}}Mock) {{$m.Name}}(
 {{end}}
 `
 
+type Import struct {
+	Name  string
+	Value string
+}
+
+func (i *Import) DefaultName() string {
+	s := strings.Replace(i.Value, "\"", "", -1)
+	ss := strings.Split(s, "/")
+	return ss[len(ss)-1]
+}
+
 type Service struct {
 	Name    string
 	Methods []*ServiceMethod
@@ -130,6 +144,7 @@ type ServiceMethod struct {
 
 func Generate(files []string, outfile string) error {
 	var pkg string
+	var imports []*Import
 	var services []*Service
 	for _, file := range files {
 		fset := token.NewFileSet()
@@ -145,9 +160,25 @@ func Generate(files []string, outfile string) error {
 		}
 
 		ast.Inspect(f, func(node ast.Node) bool {
-			// type or not
 			d, ok := node.(*ast.GenDecl)
-			if !ok || d.Tok != token.TYPE {
+			if !ok {
+				return true
+			}
+
+			// imports
+			if d.Tok == token.IMPORT {
+				for _, spec := range d.Specs {
+					v, ok := spec.(*ast.ImportSpec)
+					if !ok {
+						continue
+					}
+					imports = append(imports, imp(v))
+				}
+				return true
+			}
+
+			// type or not
+			if d.Tok != token.TYPE {
 				return true
 			}
 			// tag
@@ -203,18 +234,16 @@ func Generate(files []string, outfile string) error {
 		return services[i].Name < services[j].Name
 	})
 
-	if outfile == "" {
-		outfile = "services.go"
-	}
-
 	var buf bytes.Buffer
 	w := bufio.NewWriter(&buf)
 	t := template.Must(template.New("services").Parse(servicesTmpl))
 	t.Execute(w, struct {
 		Package  string
+		Imports  []*Import
 		Services []*Service
 	}{
 		Package:  pkg,
+		Imports:  imports,
 		Services: services,
 	})
 	w.Flush()
@@ -235,6 +264,17 @@ func Generate(files []string, outfile string) error {
 	w.Write(b)
 
 	return nil
+}
+
+func imp(spec *ast.ImportSpec) *Import {
+	var name string
+	if spec.Name != nil {
+		name = spec.Name.Name
+	}
+	return &Import{
+		Name:  name,
+		Value: spec.Path.Value,
+	}
 }
 
 func findTag(d *ast.GenDecl, tag string) bool {
