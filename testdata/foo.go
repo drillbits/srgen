@@ -17,6 +17,9 @@ package testdata
 import (
 	"context"
 	"net/http"
+
+	htmltmp "html/template"
+	"text/template"
 )
 
 // +srgen
@@ -26,3 +29,5 @@ type FooService interface {
 
 // +srgen
 type FooConcreteService struct{}
+
+func noop(*template.Template, *htmltmp.Template) {}

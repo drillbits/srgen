@@ -21,4 +21,3 @@
 .vscode/
 
 testdata/services.go
-testdata/services_gen.go
