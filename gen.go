@@ -235,6 +235,17 @@ func Generate(files []string, outfile string) error {
 		return services[i].Name < services[j].Name
 	})
 
+	uniq := make([]*Import, 0, len(imports))
+	m := map[string]bool{}
+	for _, i := range imports {
+		k := fmt.Sprintf("%s%s", i.Name, i.Value)
+		if !m[k] {
+			m[k] = true
+			uniq = append(uniq, i)
+		}
+	}
+	imports = uniq
+
 	var buf bytes.Buffer
 	w := bufio.NewWriter(&buf)
 	t := template.Must(template.New("services").Parse(servicesTmpl))
