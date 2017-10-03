@@ -11,7 +11,7 @@ func TestGenerate(t *testing.T) {
 		"testdata/foo.go",
 		"testdata/bar.go",
 	}
-	outfile := "testdata/services_gen.go"
+	outfile := "testdata/services.go"
 	err := Generate(files, outfile)
 	if err != nil {
 		t.Fatal(err)
