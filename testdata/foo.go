@@ -24,7 +24,7 @@ import (
 
 // +srgen
 type FooService interface {
-	Get(ctx context.Context) (string, []string, *http.Request, error)
+	Get(ctx context.Context) (string, []string, *http.Request, func(func(int) func([]string)) error, error)
 }
 
 // +srgen
