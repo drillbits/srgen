@@ -212,17 +212,21 @@ func Generate(files []string, outfile string) error {
 						continue
 					}
 
-					for _, f := range fn.Params.List {
-						s := fieldString(imports, f.Type)
-						if s != "" {
-							m.Params = append(m.Params, s)
+					if fn.Params != nil {
+						for _, f := range fn.Params.List {
+							s := fieldString(imports, f.Type)
+							if s != "" {
+								m.Params = append(m.Params, s)
+							}
 						}
 					}
 
-					for _, f := range fn.Results.List {
-						s := fieldString(imports, f.Type)
-						if s != "" {
-							m.Results = append(m.Results, s)
+					if fn.Results != nil {
+						for _, f := range fn.Results.List {
+							s := fieldString(imports, f.Type)
+							if s != "" {
+								m.Results = append(m.Results, s)
+							}
 						}
 					}
 				}
@@ -334,6 +338,37 @@ func fieldString(imports []*Import, expr ast.Expr) string {
 		if s != "" {
 			return "*" + s
 		}
+	case *ast.FuncType:
+		var params []string
+		if v.Params != nil {
+			for _, f := range v.Params.List {
+				s := fieldString(imports, f.Type)
+				if s != "" {
+					params = append(params, s)
+				}
+			}
+		}
+
+		var results []string
+		if v.Results != nil {
+			for _, f := range v.Results.List {
+				s := fieldString(imports, f.Type)
+				if s != "" {
+					results = append(results, s)
+				}
+			}
+		}
+
+		s := "func("
+		if len(params) > 0 {
+			s += strings.Join(params, ", ")
+		}
+		s += ") ("
+		if len(results) > 0 {
+			s += strings.Join(results, ", ")
+		}
+		s += ")"
+		return s
 	case *ast.Ident:
 		return v.Name
 	case *ast.SelectorExpr:
